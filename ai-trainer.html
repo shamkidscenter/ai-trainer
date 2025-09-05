@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажер от Шамиля и Пушка</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            overflow: hidden;
+        }
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: flex;
+        }
+        .bubble {
+            background-color: white;
+            border: 3px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 1.5rem;
+            position: relative;
+        }
+        .bubble::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            width: 0;
+            height: 0;
+            border: 20px solid transparent;
+            border-top-color: #3b82f6;
+            border-bottom: 0;
+            margin-left: -20px;
+            margin-bottom: -20px;
+        }
+        .path-canvas {
+            cursor: crosshair;
+        }
+        .butterfly-wrapper {
+            position: absolute;
+            width: 64px;
+            height: 64px;
+            cursor: pointer;
+            transition: transform 0.3s linear;
+        }
+        .chest {
+            transition: transform 0.2s ease;
+        }
+        .chest.opened {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="bg-blue-100 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Главный контейнер -->
+    <div id="app-container" class="w-full max-w-4xl h-[90vh] max-h-[700px] bg-white rounded-2xl shadow-2xl flex flex-col p-6 relative overflow-hidden">
+
+        <!-- Персонажи -->
+        <div class="absolute bottom-4 left-4 z-10 w-24 md:w-32">
+            <!-- Пушок -->
+            <svg id="pushok-char" viewBox="0 0 100 100" class="w-full h-full">
+                <g>
+                    <path d="M50 8c-14.8 0-26.8 12-26.8 26.8 0 8.7 4.2 16.4 10.7 21.2-1.3-1.2-2.1-3-2.1-5 0-4.1 3.4-7.5 7.5-7.5s7.5 3.4 7.5 7.5c0 2-.8 3.8-2.1 5 6.5-4.8 10.7-12.5 10.7-21.2C76.8 20 64.8 8 50 8z" fill="#E0E0E0"/>
+                    <path d="M50 80c-16.6 0-30-13.4-30-30 0-4.4 1-8.6 2.7-12.4C27.9 44.5 38.1 50 50 50s22.1-5.5 27.3-12.4c1.8 3.8 2.7 8 2.7 12.4 0 16.6-13.4 30-30 30z" fill="#F5F5F5"/>
+                    <circle cx="38" cy="32" r="4" fill="#212121"/>
+                    <circle cx="62" cy="32" r="4" fill="#212121"/>
+                    <path d="M46 40c1.1 0 2.1.9 2.1 2s-.9 2-2.1 2-2.1-.9-2.1-2 .9-2 2.1-2zm8 0c1.1 0 2.1.9 2.1 2s-.9 2-2.1 2-2.1-.9-2.1-2 .9-2 2.1-2z" fill="#FFC107"/>
+                </g>
+            </svg>
+        </div>
+       
+        <!-- Область рассказа Пушка -->
+        <div id="story-panel" class="absolute bottom-40 right-4 bg-yellow-100 border-2 border-yellow-300 p-3 rounded-lg w-1/3 h-1/5 overflow-y-auto text-sm z-20">
+            <h3 class="font-bold text-yellow-800">Рассказ Пушка:</h3>
+            <div id="story-content" class="mt-1 text-gray-700"></div>
+        </div>
+
+        <!-- ---------------- ЭКРАНЫ ---------------- -->
+
+        <!-- Стартовый экран -->
+        <div id="start-screen" class="screen active flex-col items-center justify-center text-center gap-6">
+            <h1 class="text-4xl md:text-6xl font-bold text-blue-600">Компьютерный тренажер</h1>
+            <p class="text-lg md:text-2xl text-gray-700">Привет! Помоги Пушку дописать его рассказ, освоив мышку и клавиатуру!</p>
+            <button onclick="showScreen('main-menu')" class="mt-8 px-10 py-5 bg-green-500 text-white text-2xl font-bold rounded-full shadow-lg hover:bg-green-600 transform hover:scale-105 transition-transform">Начать!</button>
+        </div>
+        
+        <!-- Главное меню -->
+        <div id="main-menu" class="screen flex-col items-center justify-center text-center gap-8">
+            <h2 class="text-3xl md:text-5xl font-bold text-blue-600">Выбери, с чего начнем?</h2>
+            <div class="flex flex-col md:flex-row gap-8">
+                <button onclick="showScreen('mouse-trainer-menu')" class="px-8 py-12 bg-yellow-400 text-white text-2xl font-bold rounded-2xl shadow-lg hover:bg-yellow-500 transform hover:scale-105 transition-transform">
+                    <span class="text-5xl">🖱️</span><br>Мышка
+                </button>
+                <button onclick="showScreen('keyboard-trainer-menu')" class="px-8 py-12 bg-purple-400 text-white text-2xl font-bold rounded-2xl shadow-lg hover:bg-purple-500 transform hover:scale-105 transition-transform">
+                    <span class="text-5xl">⌨️</span><br>Клавиатура
+                </button>
+            </div>
+        </div>
+
+        <!-- Меню тренажеров мыши -->
+        <div id="mouse-trainer-menu" class="screen flex-col items-center justify-center text-center gap-4">
+            <h2 class="text-3xl md:text-4xl font-bold text-yellow-600 mb-6">Тренируем Мышку</h2>
+            <div class="flex flex-col gap-4 w-full max-w-xs">
+                <button onclick="startButterflyGame()" class="px-6 py-4 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600">Поймай бабочку (Клик)</button>
+                <button onclick="startChestsGame()" class="px-6 py-4 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600">Открой сундучки (Двойной клик)</button>
+                <button onclick="startPathGame()" class="px-6 py-4 bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600">Веди по дорожке (Точность)</button>
+            </div>
+            <button onclick="showScreen('main-menu')" class="mt-8 px-6 py-3 bg-gray-400 text-white rounded-full hover:bg-gray-500">Назад в меню</button>
+        </div>
+        
+        <!-- Меню тренажеров клавиатуры -->
+        <div id="keyboard-trainer-menu" class="screen flex-col items-center justify-center text-center gap-4">
+            <h2 class="text-3xl md:text-4xl font-bold text-purple-600 mb-6">Тренируем Клавиатуру</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <button onclick="showScreen('type-name-screen')" class="px-6 py-4 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600">Напечатай свое имя</button>
+                 <button onclick="showScreen('space-enter-screen')" class="px-6 py-4 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600">Тренажер "Пробел"</button>
+            </div>
+            <button onclick="showScreen('main-menu')" class="mt-8 px-6 py-3 bg-gray-400 text-white rounded-full hover:bg-gray-500">Назад в меню</button>
+        </div>
+
+        <!-- Экран: Игра "Поймай бабочку" -->
+        <div id="butterfly-game-screen" class="screen flex-col items-center justify-center text-center gap-4 relative w-full h-full">
+            <div class="absolute top-2 left-2 text-xl font-bold z-10">Поймано: <span id="butterfly-score">0</span> / 5</div>
+            <div class="absolute top-2 right-2 text-xl font-bold z-10">Время: <span id="butterfly-timer">15</span></div>
+            <div id="butterfly-area" class="w-full h-full bg-sky-200 rounded-lg relative overflow-hidden cursor-pointer">
+                <!-- Бабочка будет создаваться здесь через JS -->
+            </div>
+            <button onclick="showScreen('mouse-trainer-menu')" class="absolute bottom-2 z-10 px-6 py-3 bg-gray-400 text-white rounded-full hover:bg-gray-500">Закончить</button>
+        </div>
+
+        <!-- Экран: Игра "Открой сундучки" -->
+        <div id="chests-game-screen" class="screen flex-col items-center justify-center text-center gap-4">
+            <h2 class="text-2xl md:text-3xl font-bold text-red-600">Дважды кликни, чтобы открыть все сундуки!</h2>
+            <p>Открыто: <span id="chests-opened">0</span> / 4</p>
+            <div id="chests-area" class="grid grid-cols-2 gap-8 mt-4">
+                <!-- Сундуки будут создаваться здесь -->
+            </div>
+            <button onclick="showScreen('mouse-trainer-menu')" class="mt-6 px-6 py-3 bg-gray-400 text-white rounded-full hover:bg-gray-500">Назад</button>
+        </div>
+
+        <!-- Экран: Игра "Веди по дорожке" -->
+        <div id="path-game-screen" class="screen flex-col items-center justify-center text-center gap-2">
+            <h2 class="text-2xl font-bold text-indigo-600">Зажми мышку на старте и веди до финиша!</h2>
+            <canvas id="path-canvas" class="bg-green-100 rounded-lg shadow-inner path-canvas"></canvas>
+            <button onclick="showScreen('mouse-trainer-menu')" class="mt-2 px-6 py-3 bg-gray-400 text-white rounded-full hover:bg-gray-500">Назад</button>
+        </div>
+        
+        <!-- Экран: Напечатай свое имя -->
+        <div id="type-name-screen" class="screen flex-col items-center justify-center text-center gap-4">
+            <h2 class="text-2xl font-bold text-blue-600">Как тебя зовут? Напиши здесь:</h2>
+            <input type="text" id="name-input" class="text-2xl p-3 border-2 border-gray-300 rounded-lg w-full max-w-sm text-center focus:border-blue-500 outline-none">
+            <button id="submit-name-button" class="mt-4 px-8 py-3 bg-green-500 text-white rounded-full text-lg hover:bg-green-600">Готово!</button>
+            <button onclick="showScreen('keyboard-trainer-menu')" class="mt-2 px-6 py-3 bg-gray-400 text-white rounded-full hover:bg-gray-500">Назад</button>
+        </div>
+        
+        <!-- Экран: Пробел (Упрощенный) -->
+        <div id="space-enter-screen" class="screen flex-col items-center justify-center text-center gap-4 w-full">
+            <h2 class="text-2xl font-bold text-green-600">Поставь пробел между словами</h2>
+            <p class="text-gray-600">Нажми длинную клавишу <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Пробел</kbd>.</p>
+            <div id="space-enter-task" class="p-4 bg-gray-100 rounded-lg w-full max-w-lg text-2xl">Котспит</div>
+            <input type="text" id="space-enter-input" class="text-2xl p-3 border-2 border-gray-300 rounded-lg w-full max-w-sm text-center focus:border-green-500 outline-none" />
+            <button id="space-enter-check" class="mt-4 px-8 py-3 bg-blue-500 text-white rounded-full text-lg hover:bg-blue-600">Проверить</button>
+            <button onclick="showScreen('keyboard-trainer-menu')" class="mt-2 px-6 py-3 bg-gray-400 text-white rounded-full hover:bg-gray-500">Назад</button>
+        </div>
+
+        <!-- Модальное окно с фидбэком -->
+        <div id="feedback-modal" class="absolute inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white p-8 rounded-2xl shadow-xl text-center w-full max-w-sm flex flex-col items-center gap-4">
+                <div id="feedback-char" class="w-24 h-24"></div>
+                <h3 id="feedback-title" class="text-3xl font-bold"></h3>
+                <p id="feedback-text" class="text-lg"></p>
+                <button id="feedback-button" class="mt-4 px-8 py-3 bg-green-500 text-white rounded-full text-lg">Продолжить</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const screens = document.querySelectorAll('.screen');
+    const storyContent = document.getElementById('story-content');
+    
+    // --- Состояние приложения ---
+    let currentScreen = 'start-screen';
+    const storyParts = [
+        "Жил-был космический кот.",
+        "Он летал на ракете из подушек.",
+        "Однажды он встретил лунную мышь.",
+        "Они вместе пили молочные коктейли.",
+        "И смотрели на звезды.",
+        "Конец!"
+    ];
+    let progress = {
+        completedTasks: [],
+        storyProgress: 0
+    };
+
+    // --- ОЗВУЧКА ИНСТРУКЦИЙ ---
+    window.speechSynthesis.onvoiceschanged = () => {};
+
+    function speak(text) {
+        if (!text || typeof window.speechSynthesis === 'undefined') return;
+        const synth = window.speechSynthesis;
+        if (synth.speaking) {
+            synth.cancel();
+        }
+        
+        setTimeout(() => {
+            const utterThis = new SpeechSynthesisUtterance(text);
+            const russianVoice = synth.getVoices().find(voice => voice.lang === 'ru-RU');
+            if (russianVoice) {
+                utterThis.voice = russianVoice;
+            }
+            utterThis.lang = 'ru-RU';
+            utterThis.rate = 0.95; // Slightly faster for natural flow
+            utterThis.pitch = 1.1; // Slightly higher pitch for friendliness
+            synth.speak(utterThis);
+        }, 100);
+    }
+    
+    // Улучшенные и скорректированные тексты инструкций
+    const instructions = {
+        'butterfly-game-screen': 'Поймай пять бабочек! У тебя 15 секунд. Кликай по ним мышкой!',
+        'chests-game-screen': 'Скорее открывай сундукИ! Кликни по каждому два раза, быстро-быстро.',
+        'path-game-screen': 'Аккуратно веди мышку по дорожке! Зажми кнопку на старте и не отпускай до самого финиша.',
+        'type-name-screen': 'Как тебя зовут? Напечатай своё имя и нажми зелёную кнопку.',
+        'space-enter-screen': 'Сделай правильно: Кот спит. Поставь пробел между словами.'
+    };
+    
+    // --- Управление экранами ---
+    function showScreen(screenId) {
+        if (currentScreen === 'butterfly-game-screen') {
+            endButterflyGame(false, true); 
+        }
+        const synth = window.speechSynthesis;
+        if (synth.speaking) {
+            synth.cancel();
+        }
+
+        screens.forEach(screen => {
+            screen.classList.remove('active');
+        });
+        document.getElementById(screenId).classList.add('active');
+        currentScreen = screenId;
+        
+        if (instructions[screenId]) {
+            speak(instructions[screenId]);
+        }
+    }
+    
+    // --- Аудио-фидбэк ---
+    let audioCtx;
+    function playSound(type = 'success') {
+        if (!audioCtx) {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) {
+                console.error("Web Audio API is not supported in this browser");
+                return;
+            }
+        }
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        if (type === 'success') {
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+        } else if (type === 'click') {
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
+        } else { // error
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+        }
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+    }
+    
+    // --- Система мотивации и прогресса ---
+    function showFeedback(taskName, isSuccess) {
+        const modal = document.getElementById('feedback-modal');
+        const title = document.getElementById('feedback-title');
+        const text = document.getElementById('feedback-text');
+        const char = document.getElementById('feedback-char');
+        const button = document.getElementById('feedback-button');
+        const pushokNode = document.getElementById('pushok-char');
+
+        char.innerHTML = ''; 
+        
+        if (isSuccess) {
+            title.textContent = 'Отлично!';
+            title.className = 'text-3xl font-bold text-green-500';
+            if (pushokNode) char.appendChild(pushokNode.cloneNode(true));
+            
+            if (!progress.completedTasks.includes(taskName)) {
+                progress.completedTasks.push(taskName);
+                if (progress.storyProgress < storyParts.length) {
+                    text.textContent = `Ты помог Пушку! Он добавил в рассказ: "${storyParts[progress.storyProgress]}"`;
+                    progress.storyProgress++;
+                } else {
+                     text.textContent = "Ура! Рассказ закончен! Но ты можешь тренироваться дальше.";
+                }
+                saveProgress();
+                updateStory();
+            } else {
+                text.textContent = "Ты уже выполнял это задание, но повторение - мать учения!";
+            }
+            playSound('success');
+        } else {
+            title.textContent = 'Ой, ошибка!';
+            title.className = 'text-3xl font-bold text-red-500';
+            text.textContent = 'Попробуй еще раз, у тебя все получится!';
+            playSound('error');
+        }
+        
+        modal.style.display = 'flex';
+        
+        button.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    function showGameAlert(message, type = 'info') {
+        const modal = document.getElementById('feedback-modal');
+        const title = document.getElementById('feedback-title');
+        const text = document.getElementById('feedback-text');
+        const char = document.getElementById('feedback-char');
+        const button = document.getElementById('feedback-button');
+        const pushokNode = document.getElementById('pushok-char');
+        
+        char.innerHTML = ''; 
+
+        if (type === 'success') {
+            title.textContent = 'Тренажер пройден!';
+            title.className = 'text-3xl font-bold text-green-500';
+            if (pushokNode) char.appendChild(pushokNode.cloneNode(true));
+        } else {
+             title.textContent = 'Внимание!';
+             title.className = 'text-3xl font-bold text-blue-500';
+        }
+
+        text.textContent = message;
+        
+        modal.style.display = 'flex';
+        
+        button.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    function updateStory() {
+        storyContent.innerHTML = '';
+        for(let i=0; i < progress.storyProgress; i++) {
+            const p = document.createElement('p');
+            p.textContent = storyParts[i];
+            storyContent.appendChild(p);
+        }
+    }
+    
+    function saveProgress() {
+        localStorage.setItem('pushokTrainerProgress', JSON.stringify(progress));
+    }
+    
+    function loadProgress() {
+        const saved = localStorage.getItem('pushokTrainerProgress');
+        if (saved) {
+            progress = JSON.parse(saved);
+        }
+        updateStory();
+    }
+
+    // --- 1. Игра "Поймай бабочку" ---
+    let butterflyTimerInterval;
+    let butterflyAnimationId;
+    const butterflyArea = document.getElementById('butterfly-area');
+    const butterflyScoreEl = document.getElementById('butterfly-score');
+    const butterflyTimerEl = document.getElementById('butterfly-timer');
+    const BUTTERFLY_SVG = `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M25,50 C-10,10 50,0 50,20 C50,0 110,10 75,50 L25,50 Z" fill="#FFC107"/><path d="M25,50 C-10,90 50,100 50,80 C50,100 110,90 75,50 L25,50 Z" fill="#FF9800"/></svg>`;
+    let butterfly = null;
+    let score = 0;
+
+    function startButterflyGame() {
+        showScreen('butterfly-game-screen');
+        score = 0;
+        let timeLeft = 15;
+        butterflyScoreEl.textContent = score;
+        butterflyTimerEl.textContent = timeLeft;
+        butterflyArea.innerHTML = '';
+
+        spawnButterfly();
+
+        clearInterval(butterflyTimerInterval);
+        butterflyTimerInterval = setInterval(() => {
+            timeLeft--;
+            butterflyTimerEl.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                endButterflyGame(score >= 5);
+            }
+        }, 1000);
+    }
+
+    function spawnButterfly() {
+        if (butterfly) butterfly.remove();
+
+        butterfly = document.createElement('div');
+        butterfly.className = 'butterfly-wrapper';
+        butterfly.innerHTML = BUTTERFLY_SVG;
+        
+        const state = {
+            x: Math.random() * (butterflyArea.clientWidth - 64),
+            y: Math.random() * (butterflyArea.clientHeight - 64),
+            targetX: Math.random() * (butterflyArea.clientWidth - 64),
+            targetY: Math.random() * (butterflyArea.clientHeight - 64),
+            speed: 2 + Math.random() * 2
+        };
+
+        butterfly.style.transform = `translate(${state.x}px, ${state.y}px)`;
+        butterflyArea.appendChild(butterfly);
+
+        function move() {
+            const dx = state.targetX - state.x;
+            const dy = state.targetY - state.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < state.speed) {
+                state.targetX = Math.random() * (butterflyArea.clientWidth - 64);
+                state.targetY = Math.random() * (butterflyArea.clientHeight - 64);
+            } else {
+                state.x += (dx / distance) * state.speed;
+                state.y += (dy / distance) * state.speed;
+                butterfly.style.transform = `translate(${state.x}px, ${state.y}px)`;
+            }
+            butterflyAnimationId = requestAnimationFrame(move);
+        }
+        
+        move();
+        
+        butterfly.onclick = (e) => {
+            e.stopPropagation();
+            score++;
+            butterflyScoreEl.textContent = score;
+            playSound('click');
+            cancelAnimationFrame(butterflyAnimationId);
+            butterfly.remove();
+            if (score >= 5) {
+                endButterflyGame(true);
+            } else {
+                setTimeout(spawnButterfly, 300);
+            }
+        };
+    }
+
+    function endButterflyGame(success, manual = false) {
+        clearInterval(butterflyTimerInterval);
+        if(butterflyAnimationId) cancelAnimationFrame(butterflyAnimationId);
+        if (butterfly) {
+            butterfly.remove();
+            butterfly = null;
+        }
+        if (!manual) {
+            showFeedback('butterfly', success);
+            showScreen('mouse-trainer-menu');
+        }
+    }
+    
+    // --- 2. Игра "Открой сундучки" ---
+    const chestsArea = document.getElementById('chests-area');
+    const chestsOpenedEl = document.getElementById('chests-opened');
+    const CHEST_CLOSED_SVG = `<svg viewBox="0 0 100 100" class="w-24 h-24 cursor-pointer"><rect x="10" y="30" width="80" height="60" rx="5" fill="#A1662F"/><rect x="5" y="20" width="90" height="20" rx="5" fill="#D4AC0D"/><rect x="45" y="50" width="10" height="15" fill="#2C3E50"/></svg>`;
+    const CHEST_OPENED_SVG = `<svg viewBox="0 0 100 100" class="w-24 h-24"><rect x="10" y="30" width="80" height="60" rx="5" fill="#A1662F"/><path d="M5 25 L 30 5 L 70 5 L 95 25 Z" fill="#D4AC0D"/><circle cx="50" cy="50" r="10" fill="gold"/><circle cx="40" cy="60" r="5" fill="red"/><circle cx="60" cy="60" r="5" fill="blue"/></svg>`;
+
+    function startChestsGame() {
+        showScreen('chests-game-screen');
+        chestsArea.innerHTML = '';
+        let openedCount = 0;
+        chestsOpenedEl.textContent = openedCount;
+        
+        for (let i = 0; i < 4; i++) {
+            const chest = document.createElement('div');
+            chest.className = 'chest';
+            chest.innerHTML = CHEST_CLOSED_SVG;
+            chest.dataset.opened = "false";
+            
+            chest.ondblclick = () => {
+                if (chest.dataset.opened === "false") {
+                    chest.innerHTML = CHEST_OPENED_SVG;
+                    chest.classList.add('opened');
+                    chest.dataset.opened = "true";
+                    openedCount++;
+                    chestsOpenedEl.textContent = openedCount;
+                    playSound('success');
+                    if (openedCount === 4) {
+                       setTimeout(()=>showFeedback('chests', true), 300);
+                    }
+                }
+            };
+            chestsArea.appendChild(chest);
+        }
+    }
+    
+    // --- 3. Игра "Веди по дорожке" ---
+    const pathCanvas = document.getElementById('path-canvas');
+    const pathCtx = pathCanvas.getContext('2d');
+    let pathDrawing = false;
+    let userPath = [];
+    let offscreenPathCanvas = null;
+    let offscreenPathCtx = null;
+
+    function startPathGame() {
+        showScreen('path-game-screen');
+        const container = document.getElementById('app-container');
+        setTimeout(() => {
+            const canvasWidth = container.clientWidth * 0.8;
+            const canvasHeight = container.clientHeight * 0.6;
+            pathCanvas.width = canvasWidth;
+            pathCanvas.height = canvasHeight;
+
+            offscreenPathCanvas = document.createElement('canvas');
+            offscreenPathCanvas.width = canvasWidth;
+            offscreenPathCanvas.height = canvasHeight;
+            offscreenPathCtx = offscreenPathCanvas.getContext('2d', { willReadFrequently: true });
+            
+            resetPathGame();
+        }, 100);
+    }
+    
+    function resetPathGame() {
+        pathDrawing = false;
+        userPath = [];
+        drawPath();
+    }
+
+    function drawPath() {
+        if (!offscreenPathCtx) return;
+        const w = pathCanvas.width;
+        const h = pathCanvas.height;
+        
+        pathCtx.clearRect(0, 0, w, h);
+        offscreenPathCtx.clearRect(0, 0, w, h);
+
+        const roadPath2D = new Path2D();
+        roadPath2D.moveTo(30, h / 2);
+        roadPath2D.bezierCurveTo(w * 0.25, 20, w * 0.75, h - 20, w - 30, h / 2);
+        
+        offscreenPathCtx.lineWidth = 60;
+        offscreenPathCtx.strokeStyle = 'black'; 
+        offscreenPathCtx.stroke(roadPath2D);
+        
+        pathCtx.lineWidth = 60;
+        pathCtx.strokeStyle = '#fde68a';
+        pathCtx.lineCap = 'round';
+        pathCtx.stroke(roadPath2D);
+        
+        if (userPath.length > 1) {
+            pathCtx.beginPath();
+            pathCtx.moveTo(userPath[0].x, userPath[0].y);
+            for(let i=1; i<userPath.length; i++) {
+                pathCtx.lineTo(userPath[i].x, userPath[i].y);
+            }
+            pathCtx.strokeStyle = '#3b82f6';
+            pathCtx.lineWidth = 5;
+            pathCtx.stroke();
+        }
+
+        pathCtx.fillStyle = '#4ade80';
+        pathCtx.beginPath();
+        pathCtx.arc(30, h / 2, 25, 0, 2 * Math.PI);
+        pathCtx.fill();
+        pathCtx.fillStyle = 'white';
+        pathCtx.font = 'bold 14px Inter';
+        pathCtx.textAlign = 'center';
+        pathCtx.textBaseline = 'middle';
+        pathCtx.fillText('Старт', 30, h / 2);
+
+        pathCtx.fillStyle = '#f87171';
+        pathCtx.beginPath();
+        pathCtx.arc(w - 30, h / 2, 25, 0, 2 * Math.PI);
+        pathCtx.fill();
+        pathCtx.fillStyle = 'white';
+        pathCtx.fillText('Финиш', w - 30, h / 2);
+    }
+    
+    pathCanvas.addEventListener('mousedown', (e) => {
+        const rect = pathCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        if (Math.hypot(x - 30, y - pathCanvas.height/2) < 25) {
+            pathDrawing = true;
+            userPath = [{x, y}];
+            drawPath();
+        }
+    });
+
+    pathCanvas.addEventListener('mouseup', (e) => {
+        if (!pathDrawing) return;
+        pathDrawing = false;
+        
+        const rect = pathCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        if (Math.hypot(x - (pathCanvas.width - 30), y - pathCanvas.height/2) < 25) {
+            showGameAlert('Тренажер пройден!', 'success');
+            setTimeout(() => showFeedback('path', true), 1200);
+        } else {
+            showGameAlert('Нужно закончить на кружке "Финиш"!');
+            setTimeout(resetPathGame, 1500);
+        }
+    });
+    
+    pathCanvas.addEventListener('mouseleave', () => {
+        if (pathDrawing) {
+            pathDrawing = false;
+            showGameAlert('Мышка ушла за пределы поля. Начнем заново!');
+            setTimeout(resetPathGame, 1500);
+        }
+    });
+
+    pathCanvas.addEventListener('mousemove', (e) => {
+        if (!pathDrawing || !offscreenPathCtx) return;
+
+        const rect = pathCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const pixelData = offscreenPathCtx.getImageData(x, y, 1, 1).data;
+        if (pixelData[3] === 0) {
+            playSound('error');
+            pathDrawing = false;
+            showGameAlert('Ой, ты съехал с дорожки! Попробуй еще раз.');
+            setTimeout(resetPathGame, 1500);
+            return;
+        }
+
+        userPath.push({x, y});
+        drawPath();
+    });
+
+
+    // --- 4. Упражнение "Напечатай имя" ---
+    const nameInput = document.getElementById('name-input');
+    const submitNameBtn = document.getElementById('submit-name-button');
+    submitNameBtn.onclick = () => {
+        if (nameInput.value.trim().length > 1) {
+            showFeedback('type-name', true);
+            showGameAlert(`Привет, ${nameInput.value}! У тебя отлично получается!`);
+            nameInput.value = '';
+        } else {
+            showFeedback('type-name', false);
+        }
+    };
+    
+    // --- 5. Упражнение "Пробел" ---
+    const spaceEnterInput = document.getElementById('space-enter-input');
+    const spaceEnterCheckBtn = document.getElementById('space-enter-check');
+    const correctSpaceText = "Кот спит";
+    spaceEnterCheckBtn.onclick = () => {
+        const userText = spaceEnterInput.value.trim();
+        if(userText === correctSpaceText) {
+            showFeedback('space-enter', true);
+            spaceEnterInput.value = '';
+        } else {
+            showFeedback('space-enter', false);
+        }
+    };
+    
+
+    // --- Инициализация ---
+    window.onload = () => {
+        loadProgress();
+    };
+
+</script>
+
+</body>
+</html>
+
+
+
+
